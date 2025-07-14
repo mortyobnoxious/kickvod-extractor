@@ -1,4 +1,4 @@
-# kickvod-extractor
+# Kick VOD Extractor
 
 A simple tool that extracts the HLS `master.m3u8` URL from any Kick.com VOD, including sub-only videos.
 
