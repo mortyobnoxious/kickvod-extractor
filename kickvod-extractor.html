@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kick VOD Extractor</title>
+<link rel="shortcut icon" href="https://i.imgur.com/oqJxai1.png" type="image/x-icon">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e 50%,#0f0f23);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.container{background:rgba(30,30,50,.95);backdrop-filter:blur(10px);border-radius:20px;border:1px solid rgba(100,100,150,.2);padding:40px;box-shadow:0 20px 40px rgba(0,0,0,.5);width:100%;max-width:800px;}
+h1{text-align:center;color:#fff;margin-bottom:30px;font-size:2.5em;background:linear-gradient(45deg,#0ff,#f0f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+h3 {color:#0ff;margin-bottom: 1rem;}
+a {color:#0ff;text-decoration:none;font-weight:600;}
+a:hover {text-decoration:underline;}
+.input-group{margin-bottom:25px;}
+label{display:block;margin-bottom:8px;color:#e0e0e0;font-weight:600;font-size:1.1em;}
+input[type="text"]{width:100%;padding:15px;border:2px solid #444;border-radius:10px;font-size:16px;background:rgba(20,20,30,.8);color:#fff;}
+input[type="text"]:focus{outline:none;border-color:#0ff;box-shadow:0 0 0 3px rgba(0,212,255,.2);}
+input[type="text"]::placeholder{color:#888;}
+.button{width:100%;padding:15px;background:linear-gradient(45deg,#0ff,#f0f);color:white;border:none;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;margin-bottom:20px;}
+.button:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(0,212,255,.4);}
+.button:disabled{opacity:.6;cursor:not-allowed;}
+.loader{text-align:center;margin:20px 0;color:#fff;display:none;}
+.loader.show{display:block;}
+.spinner{border:4px solid #333;border-top:4px solid #0ff;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 10px;}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+.result{display:none;margin-top:25px;padding:20px;background:rgba(0,0,0,.3);border-radius:10px;border-left:4px solid #0ff;}
+.result.show{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.url-output{background:rgba(0,0,0,.5);padding:15px;border-radius:8px;border:1px solid #444;font-family:monospace;font-size:14px;word-break:break-all;margin-bottom:15px;position:relative;color:#0f8;}
+.url-buttons{position:absolute;top:10px;right:10px;display:flex;gap:5px;}
+.play-btn,.copy-btn{background:#106969;color:#fff;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;}
+.play-btn:hover,.copy-btn:hover{background:#0ac;transform:translateY(-1px);}
+.play-btn{background:#f0f;}
+.play-btn:hover{background:#c0c;}
+.error{color:#f57;background:rgba(255,71,87,.1);padding:15px;border-radius:8px;border-left:4px solid #f57;margin-top:15px;display:none;}
+.info{background:rgba(0,212,255,.1);color:#0ff;padding:15px;border-radius:8px;margin-bottom:20px;border-left:4px solid #0ff;}
+.vod-info-container{margin-top:15px;padding:20px;background:rgba(0,0,0,.3);border-radius:12px;border:1px solid rgba(0,212,255,.3);}
+.vod-header{display:flex;align-items:center;gap:15px;margin-bottom:15px;}
+.vod-thumbnail{width:120px;height:68px;border-radius:8px;object-fit:cover;border:2px solid #0ff;box-shadow:0 4px 8px rgba(0,212,255,.2);}
+.vod-title h4{color:#0ff;margin-bottom:5px;font-size:1.2em;}
+.vod-title .title-text{color:#fff;font-size:1.1em;font-weight:600;margin-bottom:5px;}
+.vod-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:15px;}
+.stat-item{background:rgba(255,0,255,.1);padding:10px;border-radius:8px;border-left:3px solid #f0f;}
+.stat-label{color:#f0f;font-weight:600;font-size:.9em;}
+.stat-value{color:#fff;font-size:1.1em;}
+.technical-info{background:rgba(0,212,255,.1);padding:15px;border-radius:8px;border-left:3px solid #0ff;margin-top:15px;}
+.tech-item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,212,255,.2);}
+.tech-label{color:#0ff;font-weight:500;}
+.tech-value{color:#fff;font-family:monospace;font-size:.9em;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🎬 Kick VOD Extractor</h1>
+<div class="info">Enter a Kick VOD URL and click "Generate Master URL".</div>
+<div class="input-group"><label for="vodUrl">Kick VOD URL:</label><input type="text" id="vodUrl" placeholder="https://kick.com/channel/videos/uuid"></div>
+<button class="button" id="generate">Generate Master URL</button>
+<div class="loader" id="loader"><div class="spinner"></div><p>Fetching VOD data...</p></div>
+<div class="result" id="result"><h3>Master URL:</h3><div class="url-output" id="output"><div class="url-buttons"><button class="play-btn">▶ Play</button><button class="copy-btn">Copy</button></div><span id="urlText"></span></div><div id="vodInfo"></div></div>
+<div class="error" id="error"></div>
+</div>
+<script>
+const $ = id => document.getElementById(id),
+AWS_ID = "196233775518";
+
+const show = (el, show = true) => el.classList.toggle('show', show);
+const parse = url => {
+  const m = url.match(/kick\.com\/([^\/]+)\/videos\/([a-f0-9-]+)/);
+  if (!m) throw 'Invalid URL';
+  return {user: m[1], uuid: m[2]};
+};
+
+const getJSON = url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status));
+
+const formatDate = s => {
+  const d = new Date(s);
+  return [d.getFullYear(), d.getMonth()+1, d.getDate(), d.getHours(), d.getMinutes()].join('/');
+};
+
+function formatDuration(minutes) {
+    const totalSeconds = Math.floor(minutes * 60);
+    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const s = String(totalSeconds % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+}
+
+
+const extractThumbIDs = u => {
+  const m = u.match(/video_thumbnails\/([^\/]+)\/([^\/]+)\//);
+  if (!m) throw 'Thumbnail ID extraction failed';
+  return {session: m[1], segment: m[2]};
+};
+
+const gen = async () => {
+  const url = $('vodUrl').value.trim();
+  if (!url) return $('error').textContent = 'Please enter a VOD URL', $('error').style.display = 'block';
+
+  show($('loader'), 1); show($('result'), 0); $('error').style.display = 'none';
+
+  try {
+    const {user, uuid} = parse(url),
+          chan = await getJSON(`https://kick.com/api/v1/channels/${user}`);
+    let vod, ls;
+    (chan.previous_livestreams||[]).forEach(l=>l.video?.uuid===uuid && ([vod,ls]=[l.video,l]));
+    if (!vod && chan.livestream?.video?.uuid === uuid) [vod,ls] = [chan.livestream.video, chan.livestream];
+    if (!vod) vod = await getJSON(`https://kick.com/api/v1/video/${uuid}`);
+    if (!vod) throw 'VOD not found';
+
+    const thumb = ls?.thumbnail?.src || vod.thumbnail?.src || vod.thumbnail?.url;
+    const {session, segment} = extractThumbIDs(thumb);
+    const time = formatDate(ls?.created_at || ls?.start_time || vod.created_at || vod.start_time);
+    const m3u8 = `https://stream.kick.com/ivs/v1/${AWS_ID}/${session}/${time}/${segment}/media/hls/master.m3u8`;
+
+    $('urlText').textContent = m3u8;
+    $('vodInfo').innerHTML = `
+      <div class="vod-info-container">
+        <div class="vod-header">
+          <a href="${url}" target="_blank" rel="noopener noreferrer">
+            <img src="${thumb}" class="vod-thumbnail" onerror="this.style.display='none'">
+          </a>
+          <div class="vod-title">
+        <h3><a href="https://kick.com/${chan.slug}" target="_blank" rel="noopener noreferrer">${chan.slug || 'Untitled Channel'}</a></h3>
+            <div class="title-text">${ls?.session_title || vod.session_title || 'Untitled Stream'}</div></div>
+        </div>
+        <div class="vod-stats">
+          <div class="stat-item"><div class="stat-label">Duration</div><div class="stat-value">${ls?.duration ? formatDuration(ls.duration/60000):'N/A'}</div></div>
+          <div class="stat-item"><div class="stat-label">Views</div><div class="stat-value">${(ls?.views||vod.views||0).toLocaleString('tr')}</div></div>
+          <div class="stat-item"><div class="stat-label">Status</div><div class="stat-value">${vod.status||'N/A'}</div></div>
+          <div class="stat-item"><div class="stat-label">Created</div><div class="stat-value">${new Date(ls?.created_at||vod.created_at).toLocaleString('tr')}</div></div>
+        </div>
+        <div class="technical-info">
+          <div class="tech-item"><span class="tech-label">Stream Session ID:</span><span class="tech-value">${session}</span></div>
+          <div class="tech-item"><span class="tech-label">Video Segment ID:</span><span class="tech-value">${segment}</span></div>
+          <div class="tech-item"><span class="tech-label">Timestamp:</span><span class="tech-value">${time}</span></div>
+        </div>
+      </div>`;
+    show($('result'), 1);
+  } catch (e) {
+    $('error').textContent = 'Error: ' + e;
+    $('error').style.display = 'block';
+  } finally {
+    show($('loader'), 0);
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('generate').onclick = gen;
+  $('vodUrl').onkeypress = e => e.key === 'Enter' && gen();
+  document.querySelector('.copy-btn').onclick = () => navigator.clipboard.writeText($('urlText').textContent).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+  document.querySelector('.play-btn').onclick = () => window.open(`https://playhls.com/?url=${encodeURIComponent($('urlText').textContent)}`, '_blank');
+});
+</script>
+</body>
+</html>
