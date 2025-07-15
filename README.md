@@ -2,6 +2,8 @@
 
 A simple tool that extracts the HLS `master.m3u8` URL from any Kick.com VOD, including sub-only videos.
 
+[Use Online](https://htmlpreview.github.io/?https://github.com/mortyobnoxious/kickvod-extractor/blob/main/kickvod-extractor.html)
+
 ## How to Use
 
 1. [**Download** `kickvod-extractor.html`](./kickvod-extractor.html) and open it in any modern browser.
