@@ -148,7 +148,11 @@ const gen = async () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   $('generate').onclick = gen;
-  $('vodUrl').onkeypress = e => e.key === 'Enter' && gen();
+  $('vodUrl').onkeypress = e => {
+    if (e.key === 'Enter') {
+      gen()
+    }
+  };
   document.querySelector('.copy-btn').onclick = () => navigator.clipboard.writeText($('urlText').textContent).then(() => {
     const btn = document.querySelector('.copy-btn');
     btn.textContent = 'Copied!';
