@@ -28,3 +28,6 @@ Works with both public and **subscriber-only** VODs.
 
 ## Output format
 https://stream.kick.com/ivs/v1/196233775518/{session_id}/{yyyy}/{MM}/{dd}/{HH}/{mm}/{segment_id}/media/hls/master.m3u8
+
+Made with [Claude](https://claude.ai/).
+
