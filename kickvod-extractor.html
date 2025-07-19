@@ -10,6 +10,7 @@
 body{font-family:sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e 50%,#0f0f23);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
 .container{background:rgba(30,30,50,.95);backdrop-filter:blur(10px);border-radius:20px;border:1px solid rgba(100,100,150,.2);padding:40px;box-shadow:0 20px 40px rgba(0,0,0,.5);width:100%;max-width:800px;}
 h1{text-align:center;color:#fff;margin-bottom:30px;font-size:2.5em;background:linear-gradient(45deg,#0ff,#f0f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+h1 a {background-color: #ff00001a;padding: 2px 5px;border-radius: 10px;}
 h3 {color:#0ff;margin-bottom: 1rem;}
 a {color:#0ff;text-decoration:none;font-weight:600;}
 a:hover {text-decoration:underline;}
@@ -49,11 +50,12 @@ input[type="text"]::placeholder{color:#888;}
 .tech-item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,212,255,.2);}
 .tech-label{color:#0ff;font-weight:500;}
 .tech-value{color:#fff;font-family:monospace;font-size:.9em;}
+.tech-label.claude {font-size: 12px;}
 </style>
 </head>
 <body>
 <div class="container">
-<h1>🎬 Kick VOD Extractor</h1>
+<h1>🎬 Kick VOD Extractor<div class="tech-label claude">Made with <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer">Claude</a>.</div></h1>
 <div class="info">Enter a Kick VOD URL and click "Generate Master URL".</div>
 <div class="input-group"><label for="vodUrl">Kick VOD URL:</label><input type="text" id="vodUrl" placeholder="https://kick.com/channel/videos/uuid"></div>
 <button class="button" id="generate">Generate Master URL</button>
