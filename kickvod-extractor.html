@@ -31,10 +31,12 @@ input[type="text"]::placeholder{color:#888;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .url-output{background:rgba(0,0,0,.5);padding:15px;border-radius:8px;border:1px solid #444;font-family:monospace;font-size:14px;word-break:break-all;margin-bottom:15px;position:relative;color:#0f8;}
 .url-buttons{position:absolute;top:10px;right:10px;display:flex;gap:5px;}
-.play-btn,.copy-btn{background:#106969;color:#fff;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;}
-.play-btn:hover,.copy-btn:hover{background:#0ac;transform:translateY(-1px);}
+.play-btn,.copy-btn, .hash-btn{background:#106969;color:#fff;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;}
+.play-btn:hover,.copy-btn:hover, .hash-btn:hover{background:#0ac;transform:translateY(-1px);}
 .play-btn{background:#f0f;}
 .play-btn:hover{background:#c0c;}
+.hash-btn{background:#a659ff;}
+.hash-btn:hover{background:#a772e4;}
 .error{color:#f57;background:rgba(255,71,87,.1);padding:15px;border-radius:8px;border-left:4px solid #f57;margin-top:15px;display:none;}
 .info{background:rgba(0,212,255,.1);color:#0ff;padding:15px;border-radius:8px;margin-bottom:20px;border-left:4px solid #0ff;}
 .vod-info-container{margin-top:15px;padding:20px;background:rgba(0,0,0,.3);border-radius:12px;border:1px solid rgba(0,212,255,.3);}
@@ -60,7 +62,7 @@ input[type="text"]::placeholder{color:#888;}
 <div class="input-group"><label for="vodUrl">Kick VOD URL:</label><input type="text" id="vodUrl" placeholder="https://kick.com/channel/videos/uuid"></div>
 <button class="button" id="generate">Generate Master URL</button>
 <div class="loader" id="loader"><div class="spinner"></div><p>Fetching VOD data...</p></div>
-<div class="result" id="result"><h3>Master URL:</h3><div class="url-output" id="output"><div class="url-buttons"><button class="play-btn">▶ Play</button><button class="copy-btn">Copy</button></div><span id="urlText"></span></div><div id="vodInfo"></div></div>
+<div class="result" id="result"><h3>Master URL:</h3><div class="url-output" id="output"><div class="url-buttons"><button class="hash-btn">#</button><button class="play-btn">▶ Play</button><button class="copy-btn">Copy</button></div><span id="urlText"></span></div><div id="vodInfo"></div></div>
 <div class="error" id="error"></div>
 </div>
 <script>
@@ -125,8 +127,10 @@ const gen = async () => {
             <img src="${thumb}" class="vod-thumbnail" onerror="this.style.display='none'">
           </a>
           <div class="vod-title">
-        <h3><a href="https://kick.com/${chan.slug}" target="_blank" rel="noopener noreferrer">${chan.slug || 'Untitled Channel'}</a></h3>
-            <div class="title-text">${title}</div></div>
+            <h3><a href="https://kick.com/${chan.slug}" target="_blank" rel="noopener noreferrer">${chan.slug || 'Untitled Channel'}</a></h3>
+            <div class="title-text">${title}</div>
+            
+            </div>
         </div>
         <div class="vod-stats">
           <div class="stat-item"><div class="stat-label">Duration</div><div class="stat-value">${ls?.duration ? formatDuration(ls.duration/60000):'N/A'}</div></div>
@@ -157,15 +161,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
-  document.querySelector('.title-text').onclick = (e) => {
-          const container = e.target.closest('.vod-info-container');
-            if (container) {
-            const hashString = `#\\/${container.getAttribute('data-hash')}`;
+  document.querySelector('.hash-btn').onclick = (e) => {
+            let t = document.querySelector('.vod-info-container').getAttribute('data-hash');
+            const hashString = `#\\/${t}`;
             const urlElement = $('urlText');
             urlElement.textContent = urlElement.textContent.includes(hashString)
                 ? urlElement.textContent.replace(hashString, '')
                 : urlElement.textContent + hashString;
-            }
   }
 
   document.querySelector('.copy-btn').onclick = () => navigator.clipboard.writeText($('urlText').textContent).then(() => {
