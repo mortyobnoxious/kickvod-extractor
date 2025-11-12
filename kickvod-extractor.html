@@ -162,7 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.querySelector('.play-btn').onclick = () => window.open(`https://playhls.com/?url=${encodeURIComponent($('urlText').textContent)}`, '_blank');
   
-  const params = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
   const urlParam = params.get('url');
   if (urlParam) {
     $('vodUrl').value = decodeURIComponent(urlParam);
