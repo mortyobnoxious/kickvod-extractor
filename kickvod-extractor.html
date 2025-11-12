@@ -115,17 +115,18 @@ const gen = async () => {
     const {session, segment} = extractThumbIDs(thumb);
     const time = formatDate(ls?.created_at || ls?.start_time || vod.created_at || vod.start_time);
     const m3u8 = `https://stream.kick.com/ivs/v1/${AWS_ID}/${session}/${time}/${segment}/media/hls/master.m3u8`;
+    let title = ls?.session_title || vod.session_title || 'Untitled Stream';
 
     $('urlText').textContent = m3u8;
     $('vodInfo').innerHTML = `
-      <div class="vod-info-container">
+      <div class="vod-info-container" data-hash="${chan.slug} - ${title}">
         <div class="vod-header">
           <a href="${url}" target="_blank" rel="noopener noreferrer">
             <img src="${thumb}" class="vod-thumbnail" onerror="this.style.display='none'">
           </a>
           <div class="vod-title">
         <h3><a href="https://kick.com/${chan.slug}" target="_blank" rel="noopener noreferrer">${chan.slug || 'Untitled Channel'}</a></h3>
-            <div class="title-text">${ls?.session_title || vod.session_title || 'Untitled Stream'}</div></div>
+            <div class="title-text">${title}</div></div>
         </div>
         <div class="vod-stats">
           <div class="stat-item"><div class="stat-label">Duration</div><div class="stat-value">${ls?.duration ? formatDuration(ls.duration/60000):'N/A'}</div></div>
@@ -155,6 +156,20 @@ document.addEventListener('DOMContentLoaded', () => {
       gen()
     }
   };
+  
+    document.body.addEventListener('click', e => {
+        if (e.target.classList.contains('title-text')) {
+            const container = e.target.closest('.vod-info-container');
+            if (container) {
+            const hashString = `#\\/${container.getAttribute('data-hash')}`;
+            const urlElement = $('urlText');
+            urlElement.textContent = urlElement.textContent.includes(hashString)
+                ? urlElement.textContent.replace(hashString, '')
+                : urlElement.textContent + hashString;
+            }
+        }
+    });
+
   document.querySelector('.copy-btn').onclick = () => navigator.clipboard.writeText($('urlText').textContent).then(() => {
     const btn = document.querySelector('.copy-btn');
     btn.textContent = 'Copied!';
