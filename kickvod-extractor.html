@@ -157,10 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
-    document.body.addEventListener('click', e => {
-        if (e.target.classList.contains('title-text')) {
-          alert();
-            const container = e.target.closest('.vod-info-container');
+  document.querySelector('.title-text').onclick = () => {
+          const container = e.target.closest('.vod-info-container');
             if (container) {
             const hashString = `#\\/${container.getAttribute('data-hash')}`;
             const urlElement = $('urlText');
@@ -169,8 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? urlElement.textContent.replace(hashString, '')
                 : urlElement.textContent + hashString;
             }
-        }
-    });
+  }
 
   document.querySelector('.copy-btn').onclick = () => navigator.clipboard.writeText($('urlText').textContent).then(() => {
     const btn = document.querySelector('.copy-btn');
