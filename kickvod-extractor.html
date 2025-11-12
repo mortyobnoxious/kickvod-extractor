@@ -161,6 +161,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => btn.textContent = 'Copy', 2000);
   });
   document.querySelector('.play-btn').onclick = () => window.open(`https://playhls.com/?url=${encodeURIComponent($('urlText').textContent)}`, '_blank');
+  
+  const params = new URLSearchParams(window.location.search);
+  const urlParam = params.get('url');
+  if (urlParam) {
+    $('vodUrl').value = decodeURIComponent(urlParam);
+    gen();
+  }
 });
 </script>
 </body>
