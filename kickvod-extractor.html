@@ -157,12 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
-  document.querySelector('.title-text').onclick = () => {
+  document.querySelector('.title-text').onclick = (e) => {
           const container = e.target.closest('.vod-info-container');
             if (container) {
             const hashString = `#\\/${container.getAttribute('data-hash')}`;
             const urlElement = $('urlText');
-            alert(hashString);
             urlElement.textContent = urlElement.textContent.includes(hashString)
                 ? urlElement.textContent.replace(hashString, '')
                 : urlElement.textContent + hashString;
