@@ -19,6 +19,13 @@ A simple tool that extracts the HLS `master.m3u8` URL from any Kick.com VOD, inc
 
 Works with both public and **subscriber-only** VODs.
 
+## Auto-fetch Feature
+
+Add `#url=` with your Kick VOD URL to automatically load data:
+```
+#url=https://kick.com/channel/videos/video-uuid
+```
+
 ## How it works
 
 1. Parses the username and VOD UUID from the given URL.
