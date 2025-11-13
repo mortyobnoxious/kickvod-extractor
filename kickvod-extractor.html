@@ -9,7 +9,7 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e 50%,#0f0f23);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
 .container{background:rgba(30,30,50,.95);backdrop-filter:blur(10px);border-radius:20px;border:1px solid rgba(100,100,150,.2);padding:40px;box-shadow:0 20px 40px rgba(0,0,0,.5);width:100%;max-width:800px;}
-h1{text-align:center;color:#fff;margin-bottom:30px;font-size:2.5em;background:linear-gradient(45deg,#0ff,#f0f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+h1{text-align:center;color:#fff;margin-bottom:30px;font-size:2.5em;background:linear-gradient(45deg,#0ff,#f0f);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
 h1 a {background-color: #ff00001a;padding: 2px 5px;border-radius: 10px;}
 h3 {color:#0ff;margin-bottom: 1rem;}
 a {color:#0ff;text-decoration:none;font-weight:600;}
@@ -53,6 +53,7 @@ input[type="text"]::placeholder{color:#888;}
 .tech-label{color:#0ff;font-weight:500;}
 .tech-value{color:#fff;font-family:monospace;font-size:.9em;}
 .tech-label.claude {font-size: 12px;}
+.url-source{background:rgba(0,255,0,.1);padding:8px 12px;border-radius:5px;border-left:3px solid #0f0;margin-bottom:10px;font-size:.9em;color:#0f0;}
 </style>
 </head>
 <body>
@@ -61,13 +62,15 @@ input[type="text"]::placeholder{color:#888;}
 <div class="info">Enter a Kick VOD URL and click "Generate Master URL".</div>
 <div class="input-group"><label for="vodUrl">Kick VOD URL:</label><input type="text" id="vodUrl" placeholder="https://kick.com/channel/videos/uuid"></div>
 <button class="button" id="generate">Generate Master URL</button>
-<div class="loader" id="loader"><div class="spinner"></div><p>Fetching VOD data...</p></div>
-<div class="result" id="result"><h3>Master URL:</h3><div class="url-output" id="output"><div class="url-buttons"><button class="hash-btn">#</button><button class="play-btn">▶ Play</button><button class="copy-btn">Copy</button></div><span id="urlText"></span></div><div id="vodInfo"></div></div>
+<div class="loader" id="loader"><div class="spinner"></div><p id="loaderText">Fetching VOD data...</p></div>
+<div class="result" id="result"><h3>Master URL:</h3><div id="urlSource"></div><div class="url-output" id="output"><div class="url-buttons"><button class="hash-btn">#</button><button class="play-btn">▶ Play</button><button class="copy-btn">Copy</button></div><span id="urlText"></span></div><div id="vodInfo"></div></div>
 <div class="error" id="error"></div>
 </div>
 <script>
 const $ = id => document.getElementById(id),
 AWS_ID = "196233775518";
+
+let cachedPrefixes = null;
 
 const show = (el, show = true) => el.classList.toggle('show', show);
 const parse = url => {
@@ -77,6 +80,17 @@ const parse = url => {
 };
 
 const getJSON = url => fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.status));
+
+const corsProxy = "https://cors.viddastrage.workers.dev/corsproxy/?apiurl=";
+
+const testURL = async url => {
+  try {
+    const response = await fetch(corsProxy + encodeURIComponent(url), { method: 'HEAD' });
+    return response.ok;
+  } catch (e) {
+    return false;
+  }
+};
 
 const formatDate = s => {
   const d = new Date(s);
@@ -91,11 +105,14 @@ function formatDuration(minutes) {
     return `${h}:${m}:${s}`;
 }
 
-
 const extractThumbIDs = u => {
   const m = u.match(/video_thumbnails\/([^\/]+)\/([^\/]+)\//);
   if (!m) throw 'Thumbnail ID extraction failed';
   return {session: m[1], segment: m[2]};
+};
+
+const setLoaderText = text => {
+  $('loaderText').textContent = text;
 };
 
 const gen = async () => {
@@ -103,22 +120,70 @@ const gen = async () => {
   if (!url) return $('error').textContent = 'Please enter a VOD URL', $('error').style.display = 'block';
 
   show($('loader'), 1); show($('result'), 0); $('error').style.display = 'none';
+  setLoaderText('Fetching VOD data...');
 
   try {
     const {user, uuid} = parse(url),
           chan = await getJSON(`https://kick.com/api/v1/channels/${user}`);
     let vod, ls;
-    (chan.previous_livestreams||[]).forEach(l=>l.video?.uuid===uuid && ([vod,ls]=[l.video,l]));
-    if (!vod && chan.livestream?.video?.uuid === uuid) [vod,ls] = [chan.livestream.video, chan.livestream];
-    if (!vod) vod = await getJSON(`https://kick.com/api/v1/video/${uuid}`);
+    try {
+      vod = await getJSON(`https://kick.com/api/v1/video/${uuid}`);
+      (chan.previous_livestreams||[]).forEach(l=>l.video?.uuid===uuid && (ls=l));
+      if (!ls && chan.livestream?.video?.uuid === uuid) ls = chan.livestream;
+    } catch (e) {
+      (chan.previous_livestreams||[]).forEach(l=>l.video?.uuid===uuid && ([vod,ls]=[l.video,l]));
+      if (!vod && chan.livestream?.video?.uuid === uuid) [vod,ls] = [chan.livestream.video, chan.livestream];
+    }
+    
     if (!vod) throw 'VOD not found';
 
-    const thumb = ls?.thumbnail?.src || vod.thumbnail?.src || vod.thumbnail?.url;
-    const {session, segment} = extractThumbIDs(thumb);
-    const time = formatDate(ls?.created_at || ls?.start_time || vod.created_at || vod.start_time);
-    const m3u8 = `https://stream.kick.com/ivs/v1/${AWS_ID}/${session}/${time}/${segment}/media/hls/master.m3u8`;
-    let title = ls?.session_title || vod.session_title || 'Untitled Stream';
+    let m3u8 = null;
+    let urlSource = '';
 
+    if (vod.source) {
+      m3u8 = vod.source;
+      urlSource = '<div class="url-source">✓ Source URL from API</div>';
+    } else {
+      const thumb = ls?.thumbnail?.src || vod.thumbnail?.src || vod.thumbnail?.url;
+      const {session, segment} = extractThumbIDs(thumb);
+      const time = formatDate(ls?.created_at || ls?.start_time || vod.created_at || vod.start_time);
+      const ivsPath = `ivs/v1/${AWS_ID}/${session}/${time}/${segment}/media/hls/master.m3u8`;
+
+      setLoaderText('Testing direct URL...');
+      const directURL = `https://stream.kick.com/${ivsPath}`;
+      if (await testURL(directURL)) {
+        m3u8 = directURL;
+        urlSource = '<div class="url-source">✓ Direct URL (no prefix)</div>';
+      } else {
+        setLoaderText('Fetching prefix list...');
+        try {
+          if (!cachedPrefixes) {
+            cachedPrefixes = await getJSON('https://raw.githubusercontent.com/mortyobnoxious/kickvod-extractor/refs/heads/main/prefixes.json');
+          }
+          
+          setLoaderText('Testing prefixes...');
+          for (const prefix of cachedPrefixes) {
+            const testURL_full = `https://stream.kick.com/${prefix}/${ivsPath}`;
+            if (await testURL(testURL_full)) {
+              m3u8 = testURL_full;
+              urlSource = `<div class="url-source">✓ Found with prefix: ${prefix}</div>`;
+              break;
+            }
+          }
+          
+          if (!m3u8) {
+            throw 'No working URL found with available prefixes';
+          }
+        } catch (e) {
+          throw 'Failed to fetch or test prefixes: ' + e;
+        }
+      }
+    }
+
+    let title = ls?.session_title || vod.session_title || 'Untitled Stream';
+    const thumb = ls?.thumbnail?.src || vod.thumbnail?.src || vod.thumbnail?.url;
+
+    $('urlSource').innerHTML = urlSource;
     $('urlText').textContent = m3u8;
     $('vodInfo').innerHTML = `
       <div class="vod-info-container" data-hash="${chan.slug} - ${title}">
@@ -129,8 +194,7 @@ const gen = async () => {
           <div class="vod-title">
             <h3><a href="https://kick.com/${chan.slug}" target="_blank" rel="noopener noreferrer">${chan.slug || 'Untitled Channel'}</a></h3>
             <div class="title-text">${title}</div>
-            
-            </div>
+          </div>
         </div>
         <div class="vod-stats">
           <div class="stat-item"><div class="stat-label">Duration</div><div class="stat-value">${ls?.duration ? formatDuration(ls.duration/60000):'N/A'}</div></div>
@@ -139,9 +203,7 @@ const gen = async () => {
           <div class="stat-item"><div class="stat-label">Created</div><div class="stat-value">${new Date(ls?.created_at||vod.created_at).toLocaleString('tr')}</div></div>
         </div>
         <div class="technical-info">
-          <div class="tech-item"><span class="tech-label">Stream Session ID:</span><span class="tech-value">${session}</span></div>
-          <div class="tech-item"><span class="tech-label">Video Segment ID:</span><span class="tech-value">${segment}</span></div>
-          <div class="tech-item"><span class="tech-label">Timestamp:</span><span class="tech-value">${time}</span></div>
+          <div class="tech-item"><span class="tech-label">Video UUID:</span><span class="tech-value">${uuid}</span></div>
         </div>
       </div>`;
     show($('result'), 1);
@@ -150,6 +212,7 @@ const gen = async () => {
     $('error').style.display = 'block';
   } finally {
     show($('loader'), 0);
+    setLoaderText('Fetching VOD data...');
   }
 };
 
@@ -162,12 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   document.querySelector('.hash-btn').onclick = (e) => {
-            let t = document.querySelector('.vod-info-container').getAttribute('data-hash');
-            const hashString = `#\\/${t}`;
-            const urlElement = $('urlText');
-            urlElement.textContent = urlElement.textContent.includes(hashString)
-                ? urlElement.textContent.replace(hashString, '')
-                : urlElement.textContent + hashString;
+    let t = document.querySelector('.vod-info-container').getAttribute('data-hash');
+    const hashString = `#\\/${t}`;
+    const urlElement = $('urlText');
+    urlElement.textContent = urlElement.textContent.includes(hashString)
+        ? urlElement.textContent.replace(hashString, '')
+        : urlElement.textContent + hashString;
   }
 
   document.querySelector('.copy-btn').onclick = () => navigator.clipboard.writeText($('urlText').textContent).then(() => {
