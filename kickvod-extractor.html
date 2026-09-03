@@ -128,11 +128,23 @@ const gen = async () => {
     let vod, ls;
     try {
       vod = await getJSON(`https://kick.com/api/v1/video/${uuid}`);
-      (chan.previous_livestreams||[]).forEach(l=>l.video?.uuid===uuid && (ls=l));
-      if (!ls && chan.livestream?.video?.uuid === uuid) ls = chan.livestream;
+      ls = vod.livestream;
     } catch (e) {
-      (chan.previous_livestreams||[]).forEach(l=>l.video?.uuid===uuid && ([vod,ls]=[l.video,l]));
-      if (!vod && chan.livestream?.video?.uuid === uuid) [vod,ls] = [chan.livestream.video, chan.livestream];
+      const v2Videos = await getJSON(`https://kick.com/api/v2/channels/${user}/videos`);
+      const hexTimestamp = uuid.replace(/-/g, '').substring(0, 12);
+      const uuidTime = parseInt(hexTimestamp, 16);
+      const match = v2Videos.find(v => {
+        if (v.vod_id === uuid || v.video?.uuid === uuid) return true;
+        const videoTime = new Date(v.video?.created_at || v.created_at).getTime();
+        return Math.abs(videoTime - uuidTime) < 30000; // 30-second tolerance window
+      });
+      if (!match || !match.video?.uuid) throw 'VOD not found in database.';
+      vod = await getJSON(`https://kick.com/api/v1/video/${match.video.uuid}`);
+      ls = vod.livestream;
+    }
+
+    if (!ls && chan.livestream?.video?.uuid === vod?.uuid) {
+      ls = chan.livestream;
     }
     
     if (!vod) throw 'VOD not found';
@@ -181,14 +193,16 @@ const gen = async () => {
     }
 
     let title = ls?.session_title || vod.session_title || 'Untitled Stream';
-    const thumb = ls?.thumbnail?.src || vod.thumbnail?.src || vod.thumbnail?.url;
+    const thumb = typeof ls?.thumbnail === 'string' ? ls.thumbnail : (ls?.thumbnail?.src || vod?.thumbnail?.src || vod?.thumbnail?.url || '');
+    const realUuid = ls?.vod_id || uuid;
+    const workingUrl = `https://kick.com/${chan.slug}/videos/${realUuid}`;
 
     $('urlSource').innerHTML = urlSource;
     $('urlText').textContent = m3u8;
     $('vodInfo').innerHTML = `
       <div class="vod-info-container" data-hash="${chan.slug} - ${title}">
-        <div class="vod-header">
-          <a href="${url}" target="_blank" rel="noopener noreferrer">
+      <div class="vod-header">
+          <a href="${workingUrl}" target="_blank" rel="noopener noreferrer">
             <img src="${thumb}" class="vod-thumbnail" onerror="this.style.display='none'">
           </a>
           <div class="vod-title">
